@@ -1,243 +1,381 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.0.3",
   "info": {
-    "title": "Todo API",
+    "title": "Playlist API",
+    "description": "A simple REST API for managing a music playlist. Supports creating, editing, deleting, searching, sorting, filtering, and favoriting songs.",
     "version": "1.0.0",
-    "description": "Simple SQLite-backed Todo API"
+    "contact": {
+      "name": "Group 2 – Playlist"
+    }
   },
   "servers": [
-    {
-      "url": "/"
-    }
+    { "url": "/" }
   ],
-  "components": {
-    "schemas": {
-      "TodoDto": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 1 },
-          "title": { "type": "string", "example": "Buy milk" },
-          "completed": { "type": "boolean", "example": false }
-        },
-        "required": ["id", "title", "completed"]
-      },
-      "CreateTodoDto": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string", "example": "Buy milk" },
-          "completed": { "type": "boolean", "example": false }
-        },
-        "required": ["title"]
-      },
-      "UpdateTodoDto": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string", "example": "Buy milk" },
-          "completed": { "type": "boolean", "example": true }
-        },
-        "required": ["title", "completed"]
-      },
-      "PatchTodoDto": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string", "example": "Buy milk" },
-          "completed": { "type": "boolean", "example": true }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": { "type": "string", "example": "Todo not found" }
-        },
-        "required": ["error"]
-      }
-    }
-  },
+  "tags": [
+    { "name": "Songs", "description": "CRUD operations for songs in the playlist" },
+    { "name": "Playlist", "description": "Playlist-level operations" }
+  ],
   "paths": {
-    "/todos": {
+    "/songs": {
       "get": {
-        "summary": "List todos",
+        "tags": ["Songs"],
+        "summary": "List all songs",
+        "description": "Returns all songs in the playlist. Supports optional filtering by genre, favorites, and sorting.",
         "parameters": [
           {
-            "name": "completed",
+            "name": "genre",
             "in": "query",
-            "description": "Filter by completion status",
+            "description": "Filter songs by genre (case-insensitive exact match)",
+            "schema": { "type": "string" },
+            "example": "Pop"
+          },
+          {
+            "name": "favorite",
+            "in": "query",
+            "description": "Set to 'true' to return only favorite songs",
             "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Column to sort by",
+            "schema": { "type": "string", "enum": ["title", "artist", "duration", "genre", "createdAt"] }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "Sort direction",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" }
           }
         ],
         "responses": {
           "200": {
-            "description": "List of todos",
+            "description": "A list of songs",
             "content": {
               "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TodoDto" } }
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Song" }
+                }
               }
             }
-          }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       },
       "post": {
-        "summary": "Create a todo",
+        "tags": ["Songs"],
+        "summary": "Add a new song",
+        "description": "Adds a new song to the playlist.",
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/CreateTodoDto" } }
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateSong" },
+              "example": {
+                "title": "Shape of You",
+                "artist": "Ed Sheeran",
+                "duration": 234,
+                "genre": "Pop",
+                "isFavorite": false
+              }
+            }
           }
         },
         "responses": {
           "201": {
-            "description": "Todo created",
+            "description": "Song created successfully",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TodoDto" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Song" }
+              }
             }
           },
-          "400": {
-            "description": "Invalid payload",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       }
     },
-    "/todos/search": {
+    "/songs/search": {
       "get": {
-        "summary": "Search todos by title keyword",
+        "tags": ["Songs"],
+        "summary": "Search songs",
+        "description": "Search songs by keyword across title, artist, and genre fields.",
         "parameters": [
           {
             "name": "keyword",
             "in": "query",
             "required": true,
-            "description": "Substring to match against todo titles",
-            "schema": { "type": "string" }
+            "description": "Search keyword",
+            "schema": { "type": "string" },
+            "example": "Weeknd"
           }
         ],
         "responses": {
           "200": {
-            "description": "Matching todos",
+            "description": "Matching songs",
             "content": {
               "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TodoDto" } }
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Song" }
+                }
               }
             }
           },
-          "400": {
-            "description": "Missing or invalid keyword",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       }
     },
-    "/todos/{id}": {
-      "parameters": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "integer" },
-          "description": "Todo identifier"
-        }
-      ],
+    "/songs/{id}": {
       "get": {
-        "summary": "Get a single todo",
+        "tags": ["Songs"],
+        "summary": "Get a song by ID",
+        "parameters": [
+          { "$ref": "#/components/parameters/SongId" }
+        ],
         "responses": {
           "200": {
-            "description": "Todo found",
+            "description": "The requested song",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TodoDto" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Song" }
+              }
             }
           },
-          "404": {
-            "description": "Todo not found",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       },
       "put": {
-        "summary": "Replace a todo",
+        "tags": ["Songs"],
+        "summary": "Replace a song",
+        "description": "Full replace of a song. All fields are required.",
+        "parameters": [
+          { "$ref": "#/components/parameters/SongId" }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/UpdateTodoDto" } }
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSong" },
+              "example": {
+                "title": "Blinding Lights (Remix)",
+                "artist": "The Weeknd",
+                "duration": 230,
+                "genre": "Pop",
+                "isFavorite": true
+              }
+            }
           }
         },
         "responses": {
           "200": {
-            "description": "Todo updated",
+            "description": "Song replaced successfully",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TodoDto" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Song" }
+              }
             }
           },
-          "400": {
-            "description": "Invalid payload",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "404": {
-            "description": "Todo not found",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       },
       "patch": {
-        "summary": "Partially update a todo",
+        "tags": ["Songs"],
+        "summary": "Update a song (partial)",
+        "description": "Partial update of a song. Only provided fields will be updated.",
+        "parameters": [
+          { "$ref": "#/components/parameters/SongId" }
+        ],
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/PatchTodoDto" } }
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchSong" },
+              "example": {
+                "genre": "R&B"
+              }
+            }
           }
         },
         "responses": {
           "200": {
-            "description": "Todo updated",
+            "description": "Song updated successfully",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TodoDto" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Song" }
+              }
             }
           },
-          "400": {
-            "description": "Invalid payload",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "404": {
-            "description": "Todo not found",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
         }
       },
       "delete": {
-        "summary": "Delete a todo",
+        "tags": ["Songs"],
+        "summary": "Remove a song",
+        "description": "Removes a song from the playlist.",
+        "parameters": [
+          { "$ref": "#/components/parameters/SongId" }
+        ],
         "responses": {
           "200": {
-            "description": "Todo deleted",
+            "description": "Song removed successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { "type": "string", "example": "Todo deleted" },
-                    "todo": { "$ref": "#/components/schemas/TodoDto" }
-                  },
-                  "required": ["message", "todo"]
+                    "message": { "type": "string" },
+                    "song": { "$ref": "#/components/schemas/Song" }
+                  }
                 }
               }
             }
           },
-          "404": {
-            "description": "Todo not found",
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/songs/{id}/favorite": {
+      "patch": {
+        "tags": ["Songs"],
+        "summary": "Toggle favorite",
+        "description": "Toggles the favorite status of a song.",
+        "parameters": [
+          { "$ref": "#/components/parameters/SongId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favorite status toggled",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Song" }
+              }
             }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/playlist/stats": {
+      "get": {
+        "tags": ["Playlist"],
+        "summary": "Get playlist statistics",
+        "description": "Returns total number of songs and total playlist duration.",
+        "responses": {
+          "200": {
+            "description": "Playlist statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlaylistStats" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "SongId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Song ID",
+        "schema": { "type": "integer" }
+      }
+    },
+    "schemas": {
+      "Song": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "title": { "type": "string", "example": "Blinding Lights" },
+          "artist": { "type": "string", "example": "The Weeknd" },
+          "duration": { "type": "integer", "description": "Duration in seconds", "example": 212 },
+          "durationFormatted": { "type": "string", "description": "Duration formatted as m:ss", "example": "3:32" },
+          "genre": { "type": "string", "example": "Pop" },
+          "isFavorite": { "type": "boolean", "example": true }
+        }
+      },
+      "CreateSong": {
+        "type": "object",
+        "required": ["title", "artist", "duration"],
+        "properties": {
+          "title": { "type": "string", "description": "Song title", "example": "Shape of You" },
+          "artist": { "type": "string", "description": "Artist name", "example": "Ed Sheeran" },
+          "duration": { "type": "integer", "description": "Duration in seconds", "example": 234 },
+          "genre": { "type": "string", "description": "Music genre (defaults to Pop)", "default": "Pop", "example": "Pop" },
+          "isFavorite": { "type": "boolean", "description": "Whether the song is a favorite", "default": false }
+        }
+      },
+      "UpdateSong": {
+        "type": "object",
+        "required": ["title", "artist", "duration", "genre", "isFavorite"],
+        "properties": {
+          "title": { "type": "string", "example": "Blinding Lights (Remix)" },
+          "artist": { "type": "string", "example": "The Weeknd" },
+          "duration": { "type": "integer", "example": 230 },
+          "genre": { "type": "string", "example": "Pop" },
+          "isFavorite": { "type": "boolean", "example": true }
+        }
+      },
+      "PatchSong": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "artist": { "type": "string" },
+          "duration": { "type": "integer" },
+          "genre": { "type": "string" },
+          "isFavorite": { "type": "boolean" }
+        }
+      },
+      "PlaylistStats": {
+        "type": "object",
+        "properties": {
+          "totalSongs": { "type": "integer", "example": 5 },
+          "totalDuration": { "type": "string", "example": "17 min 26 sec" },
+          "totalDurationSeconds": { "type": "integer", "example": 1046 }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
           }
         }
       }
