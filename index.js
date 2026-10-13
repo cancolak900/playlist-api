@@ -232,3 +232,5 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.listen(PORT, () => {
   console.log(`Playlist API listening on http://localhost:${PORT}`);
 });
+
+module.exports = app;

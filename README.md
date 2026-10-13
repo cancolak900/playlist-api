@@ -1,13 +1,8 @@
-# Playlist API – SE4458 Assignment 2
+# Playlist API 
 
 A simple REST API for managing a music playlist built with **Express.js** and **SQLite** (in-memory seed data).
 
-## Group 2 – Playlist
 
-### Team Member
-- **CAN COLAK**
-
----
 
 ## Features
 
@@ -71,4 +66,4 @@ The API will be available at `http://localhost:3000` and Swagger UI at `http://l
 | | |
 |---|---|
 | **Code** | https://github.com/cancolak900/playlist-api |
-| **Deployment** | https://YOUR_DEPLOYMENT_URL |
+| **Deployment** | https://playlist-api-lyart.vercel.app/api-docs |
